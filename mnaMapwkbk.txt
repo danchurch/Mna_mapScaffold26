@@ -1,0 +1,16 @@
+## okay, let's try to repeat our previous pipeline for finding the Pla1 region (and whatever else we want) from
+## caroline's sequences. 
+
+## first we need to even see if we have enough coverage to do this
+
+## we'll try to use our notebook from another project:
+
+https://nbviewer.jupyter.org/github/danchurch/MnaXlut_genome/blob/master/Hindcasting_Mna_genome.ipynb
+
+## first task - get the sequences:
+
+seqf="/Users/danthomas/Documents/repeatedEvolution/naiandinus/sequences/"
+
+cd $seqf
+
+ssh dthomas01@stat.wm.edu
