@@ -10,7 +10,134 @@ https://nbviewer.jupyter.org/github/danchurch/MnaXlut_genome/blob/master/Hindcas
 ## first task - get the sequences:
 
 seqf="/Users/danthomas/Documents/repeatedEvolution/naiandinus/sequences/"
-
 cd $seqf
 
 ssh dthomas01@stat.wm.edu
+
+
+## so we have the sequences. decompress them.
+
+## now ecamine the quality. with Fastx?
+
+## there's got to be something better out there, but let's move with what we got
+
+## for the moment, we've got some old binaries for fastx at:
+
+fastxF='/Users/danthomas/Desktop/fastxBin'
+
+## do they work? they're old as hell
+
+$fastxF"/fastx_quality_stats"  -h
+
+## seems ok...
+
+$fastxF"/fastx_quality_stats" -Q33 -i N_S24_L004_R1_001.fastq -o "N_S24_L004_R1_001-Stats.txt"
+$fastxF"/fastx_quality_stats" -Q33 -i N_S24_L004_R2_001.fastq -o "N_S24_L004_R2_001-Stats.txt"
+
+## put these in the repo, they're small
+
+qcF="/Users/danthomas/Documents/repeatedEvolution/naiandinus/Mna_mapScaffold26/qualityChecks"
+
+cd $qcF
+
+## okay, can we plot these now?
+$fastxF/fastq_quality_boxplot_graph.sh -i $qcF"/N_S24_L004_R1_001-Stats.txt" -o "N_S24_L004_R1_001_quality.eps" -p
+$fastxF/fastq_quality_boxplot_graph.sh -i $qcF"/N_S24_L004_R2_001-Stats.txt" -o "N_S24_L004_R2_001_quality.eps" -p
+
+## ooh, there's some nastiness in there. Can we trim these?
+
+## and I'm a little unclear if adapters were removed or not. 
+## so let's install sickle and scythe, and run them through these
+
+## first, since we know nothing about the history of these sequences, really,
+## see if scythe picks up any adapters:
+
+## oh, shoot, I don't know the adapters for this run. 
+
+## let's move on, we can return to this if caroline comes through with that information
+
+## if she doesn't have it, illumina has a catalogue of adapters here:
+https://support.illumina.com/content/dam/illumina-support/documents/documentation/chemistry_documentation/experiment-design/illumina-adapter-sequences-1000000002694-11.pdf
+## but man, that's a pain in the ass
+
+## sickle
+
+fwdSeqs=/Users/danthomas/Documents/repeatedEvolution/naiandinus/sequences/N_S24_L004_R1_001.fastq
+revSeqs=/Users/danthomas/Documents/repeatedEvolution/naiandinus/sequences/N_S24_L004_R2_001.fastq
+
+mkdir /Users/danthomas/Documents/repeatedEvolution/naiandinus/Mna_mapScaffold26/qualityChecks/sickleTrims/R1
+mkdir /Users/danthomas/Documents/repeatedEvolution/naiandinus/Mna_mapScaffold26/qualityChecks/sickleTrims/R2
+mkdir /Users/danthomas/Documents/repeatedEvolution/naiandinus/Mna_mapScaffold26/qualityChecks/sickleTrims/unpaired
+ 
+cd /Users/danthomas/Documents/repeatedEvolution/naiandinus/Mna_mapScaffold26/qualityChecks/sickleTrims/R1
+
+sickledFor="/Users/danthomas/Documents/repeatedEvolution/naiandinus/Mna_mapScaffold26/qualityChecks/sickleTrims/R1/qtrim.R1.fastq"
+sickledRev="/Users/danthomas/Documents/repeatedEvolution/naiandinus/Mna_mapScaffold26/qualityChecks/sickleTrims/R2/qtrim.R2.fastq"
+sickledUnp="/Users/danthomas/Documents/repeatedEvolution/naiandinus/Mna_mapScaffold26/qualityChecks/sickleTrims/unpaired/qtrim.unpaired.fastq"
+
+## use defaults - throw out reads less than 20bp, and qscores that bring average read qscore below 20:
+
+sickle pe \
+        -f $fwdSeqs \
+        -r $revSeqs \
+        -t sanger \
+        -o $sickledFor \
+        -p $sickledRev \
+        -s $sickledUnp
+
+
+## actually, that location is going to fuck up my git repo, move them...
+
+
+
+## we need a local copy of our reference genome and 
+## to install bowtie
+
+refGenFolder="/Users/danthomas/Documents/repeatedEvolution/naiandinus/mLutReferenceGenome/"
+curl -o $refGenFolder"Mimlut_unmasked_genome.fa" -k https://genomevolution.org/coge/api/v1/genomes/22585/sequence 
+
+## install bowtie2
+
+## we'll try the mac binaries. 
+
+## add the bowtie2 binary folder to our path (this will go in our bash_profile file)
+
+bowtie="/Users/danthomas/bowtie2"
+export PATH=$PATH:$bowtie
+sickle="/Users/danthomas/sickle"
+export PATH=$PATH:$sickle
+scythe="/Users/danthomas/scythe"
+export PATH=$PATH:$scythe
+
+## okay, let's see if we can index the reference genome with bowtie2:
+
+
+mlugen="/Users/danthomas/Documents/repeatedEvolution/naiandinus/mLutReferenceGenome/Mimlut_unmasked_genome.fa"
+
+bowtie2-build -f $mlugen Mlu
+
+## looks good.
+
+## bowtie alignment
+
+## how can we align our trimmed files?,,,
+
+samF="/Users/danthomas/Documents/repeatedEvolution/naiandinus/Mna_mapScaffold26/SAM/"
+
+sickledFor="/Users/danthomas/Documents/repeatedEvolution/naiandinus/Mna_mapScaffold26/qualityChecks/sickleTrims/R1/qtrim.R1.fastq"
+sickledRev="/Users/danthomas/Documents/repeatedEvolution/naiandinus/Mna_mapScaffold26/qualityChecks/sickleTrims/R2/qtrim.R2.fastq"
+sickledUnp="/Users/danthomas/Documents/repeatedEvolution/naiandinus/Mna_mapScaffold26/qualityChecks/sickleTrims/unpaired/qtrim.unpaired.fastq"
+
+ls -l $sickledFor
+
+cd /Users/danthomas/Documents/repeatedEvolution/naiandinus/mLutReferenceGenome/bowtie_index
+
+bowtie2 --local -x Mlu -1 $sickledFor -2 $sickledRev -U $sickledUnp -S $samF"MnaSeqs_MluRef.sam"
+
+bowtie2 [options]* -x <bt2-idx> {-1 <m1> -2 <m2> | -U <r> | --interleaved <i> | -b <bam>} [-S <sam>]
+
+
+
+
+
+
