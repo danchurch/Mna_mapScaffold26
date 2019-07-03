@@ -173,6 +173,32 @@ head /Users/danthomas/Documents/repeatedEvolution/naiandinus/Mna_mapScaffold26/S
 grep "scaffold_26" /Users/danthomas/Documents/repeatedEvolution/naiandinus/Mna_mapScaffold26/SAM/MnaSeqs_MluRef.sam | wc -l
 ## 802325 at this point in time. Seems decent...
 
+### finished:
+
+###############################
+#
+# 68922733 reads; of these:
+#   66604957 (96.64%) were paired; of these:
+#     13163359 (19.76%) aligned concordantly 0 times
+#     9528321 (14.31%) aligned concordantly exactly 1 time
+#     43913277 (65.93%) aligned concordantly >1 times
+#     ----
+#     13163359 pairs aligned concordantly 0 times; of these:
+#       1246572 (9.47%) aligned discordantly 1 time
+#     ----
+#     11916787 pairs aligned 0 times concordantly or discordantly; of these:
+#       23833574 mates make up the pairs; of these:
+#         6197590 (26.00%) aligned 0 times
+#         1883710 (7.90%) aligned exactly 1 time
+#         15752274 (66.09%) aligned >1 times
+#   2317776 (3.36%) were unpaired; of these:
+#     108635 (4.69%) aligned 0 times
+#     252981 (10.91%) aligned exactly 1 time
+#     1956160 (84.40%) aligned >1 times
+# 95.35% overall alignment rate
+#
+###############################
+
 
 ########## sort clean alignment
 
@@ -181,30 +207,74 @@ grep "scaffold_26" /Users/danthomas/Documents/repeatedEvolution/naiandinus/Mna_m
 ## so install samtools, maybe picard tools
 
 ## go bam
-samtools view MnaSeqs_MluRef.sam -b > MnaSeqs_MluRef.bam
+
+sam="/Users/danthomas/Documents/repeatedEvolution/naiandinus/Mna_mapScaffold26/SAM/MnaSeqs_MluRef.sam"
+
+samtools view $sam -b > MnaSeqs_MluRef.bam
 
 ## do we need?:
 ## samtools fixmate -m
 
+## dunno. try it
+samtools fixmate -O bam -m MnaSeqs_MluRef.bam MnaSeqs_MluRef_fixmated.bam
+
 ## sort
-samtools sort MnaSeqs_MluRef.bam -o MnaSeqs_MluRef_sorted.bam
+fixmate="/Users/danthomas/Documents/repeatedEvolution/naiandinus/Mna_mapScaffold26/SAM/MnaSeqs_MluRef_fixmated.bam"
+
+## and that failed. I'm restarting, but I will assume it is going to fail again. 
+## How bad is the prospect of a cluster setup?
+
+## we'll need to send the bam file to the cluster, and install samtools
+
+## to upload to the cluster, we'll need to get it to my computer, go home, and sftp from the cluster to my computer
+## mine 
+
+## to see if it is worth it all, let's see if the cluster will install samtools locally.
+
+## and I already have it on there... so transfer bam to my computer and then do this from home.
+
+
+samtools sort $fixmate -o MnaSeqs_MluRef_fixmated_sorted.bam
 
 ## do we mark duplicates before or after we make an index?
-## not sure...
+## not sure... probably doesn't matter
 
-## mark duplicates
-samtools markdup
+## mark duplicates?
 
-samtools index MnaSeqs_MluRef_sorted.bam
+## nah, let's skip it. According to https://www.ncbi.nlm.nih.gov/pmc/articles/PMC4965708/ it's unnecessary
+## and we are focusing on a really small region.
+
+samtools index MnaSeqs_MluRef_fixmated_sorted.bam
+
+## and now?
+
+## check coverage?
+
+## with bedtools:
+
+bedtools genomecov -ibam MnaSeqs_MluRef_fixmated_sorted.bam -d > Mna_genome_cov_BP.txt 
+
+## that's using a lot of resources, but let's let it run for a while. 
+
+## while it's running, can we pull out just scaffold 26?
+
+grep "scaffold_26"
+
+## SN:lcl|scaffold_26      LN:830797
+
+## I think we want 
+
+## samtools view MnaSeqs_MluRef_fixmated_sorted.bam  "lcl|scaffold_26:50000-150000" > Mna_scaffold_26.sam
+
+## actually, I think we need to tell it to keep the header with the -h flag:
+samtools view -h MnaSeqs_MluRef_fixmated_sorted.bam  "lcl|scaffold_26:50000-150000" > Mna_scaffold_26.sam
 
 
-########## play with alignments
+## btw, notebook for the old genome pipeline is here, we sort of followed this:
+https://nbviewer.jupyter.org/github/danchurch/MnaXlut_genome/blob/master/Hindcasting_Mna_genome.ipynb
 
-## just trying to remember clustal/muscle stuff
+######## make a fasta of sequences from scaffold 26, for geneious #########
 
-## sample mybs from genbank
-muscle3 -in toyMybs.fa -fastaout toyMybs.afa -clwout toyMybs.aln -htmlout toyMybs.html
-muscle -in seqs.fa -fastaout seqs.afa -clwout seqs.aln
+## we want just those 
 
-
-
+samtools fastq Mna_scaffold_26.sam > MnaScaffold26.fastq
